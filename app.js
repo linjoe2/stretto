@@ -14,6 +14,7 @@ var mkdirp = require('mkdirp');
 var proxy = require('express-http-proxy');
 
 var app = express().http().io();
+var admin_app = express().http().io();
 
 var sessionOpts = {
   secret: 'nmpsecret',
@@ -43,7 +44,8 @@ mkdirp(app.get('configDir') + '/dbs/covers', function() {
 });
 
 // all environments
-app.set('port', process.env.PORT || 2000);
+app.set('port', process.env.PORT || 80);
+app.set('port2', process.env.PORT || 3500);
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'html');
 app.set('root', __dirname);
@@ -69,9 +71,16 @@ if (app.get('env') == 'development') {
 }
 
 require(__dirname + '/routes').createRoutes(app);
+console.log(__dirname)
+// require(__dirname + '/routes').createAdminRoutes(admin_app);
 
 app.listen(app.get('port'), function() {
   console.log('Express server listening on port ' + app.get('port'));
 });
+
+// admin_app.listen(app.get('port2'), function() {
+//   console.log('Express server listening on port ' + app.get('port2'));
+// });
+
 
 module.exports = app;

@@ -16,6 +16,7 @@ var similarSongs = require('similar-songs');
  */
 
 app = null;
+admin_app = null;
 
 exports.createRoutes = function(app_ref) {
   app = app_ref;
@@ -23,15 +24,14 @@ exports.createRoutes = function(app_ref) {
   // pass the app onto the library_functions module
   lib_func.setApp(app);
 
-  app.get('/', musicRoute);
-  app.get('/remote/:name', musicRoute);
+  app.get('/', clientRoute);
   app.get('/songs/:id', sendSong);
   app.get('/cover/:id', sendCover);
   app.get('/downloadplaylist/:id', downloadPlaylist);
 
   // remote control commands
-  app.get('/command/:name/:command', remoteCommand);
-  app.io.route('player_page_connected', function(req) { req.socket.join('players'); });
+   app.get('/command/:name/:command', remoteCommand);
+   app.io.route('player_page_connected', function(req) { req.socket.join('players'); });
 
   // remote functions
   app.io.route('set_comp_name', setCompName);
@@ -95,7 +95,94 @@ exports.createRoutes = function(app_ref) {
   app.io.route('similar_songs', getSimilarSongs);
 };
 
-function musicRoute(req, res) {
+exports.createAdminRoutes = function(app_ref) {
+  app = app_ref;
+
+  // pass the app onto the library_functions module
+  lib_func.setApp(app);
+
+  app.get('/', serverRoute);
+  app.get('/songs/:id', sendSong);
+  app.get('/cover/:id', sendCover);
+  app.get('/downloadplaylist/:id', downloadPlaylist);
+
+  // remote control commands
+   app.get('/command/:name/:command', remoteCommand);
+   app.io.route('player_page_connected', function(req) { req.socket.join('players'); });
+
+  // remote functions
+  app.io.route('set_comp_name', setCompName);
+
+  // scanning signals
+  app.io.route('scan_page_connected', function(req) { req.socket.join('scanners'); });
+
+  app.io.route('start_scan', function(req) { lib_func.scanLibrary(false); });
+
+  app.io.route('start_scan_hard', function(req) { lib_func.scanLibrary(true); });
+
+  app.io.route('stop_scan', function(req) { lib_func.stopScan(); });
+
+  app.io.route('hard_rescan', rescanItem);
+
+  // send the songs to the client
+  app.io.route('fetch_songs', returnSongs);
+
+  // playlist modifications
+  app.io.route('fetch_playlists', returnPlaylists);
+  app.io.route('create_playlist', createPlaylist);
+  app.io.route('rename_playlist', renamePlaylist);
+  app.io.route('delete_playlist', deletePlaylist);
+  app.io.route('add_to_playlist', addToPlaylist);
+  app.io.route('remove_from_playlist', removeFromPlaylist);
+  app.io.route('song_moved_in_playlist', songMovedInPlaylist);
+
+  // play count
+  app.io.route('update_play_count', updatePlayCount);
+
+  // remote control routes
+  app.io.route('get_receivers', getReceiversMinusThis);
+
+  // open file manager to location
+  app.io.route('open_dir', function(req) { opener(req.data.substring(0, req.data.lastIndexOf(path.sep))); });
+
+  // update the info of a song
+  app.io.route('update_song_info', updateSongInfo);
+
+  // rewrite tags of a track to the file
+  app.io.route('rewrite_tags', rewriteTags);
+
+  // sync routes
+  app.io.route('sync_page_connected', syncPageConnected);
+  app.io.route('sync_playlists', syncPlaylists);
+
+  // soundcloud downloading
+  app.io.route('soundcloud_download', soundcloudDownload);
+
+  // youtube downloading
+  app.io.route('youtube_download', youtubeDownload);
+
+  // youtube downloading for bunch of songs with pre-filled info
+  // (i.e. they were viewing from a mix)
+  app.io.route('youtube_import', youtubeImport);
+
+  // settings updating
+  app.io.route('update_settings', updateSettings);
+
+  // get similar songs
+  app.io.route('similar_songs', getSimilarSongs);
+};
+
+
+
+
+
+
+
+
+
+
+
+function serverRoute(req, res) {
   // test if client is mobile
   md = new MobileDetect(req.headers['user-agent']);
 
@@ -104,7 +191,36 @@ function musicRoute(req, res) {
     // the function to send the homepage only when the config is finished initalizing
     var sendHome = function() {
       // render the view
-      res.render((md.mobile() ? 'mobile' : 'index'), {
+      res.render((md.mobile() ? 'mobile_server' : 'index_server'), {
+        menu: !md.mobile(),
+        music_dir: app.get('config').music_dir,
+        music_dir_set: app.get('config').music_dir_set,
+        country_code: app.get('config').country_code,
+        ip: ip + ':' + app.get('port'),
+        remote_name: req.params.name,
+      });
+    };
+
+    // logic to wait for config to initialise
+    var config = app.get('config');
+    if (config.initialized) {
+      sendHome();
+    } else {
+      config.initializedFn = sendHome;
+    }
+  });
+}
+
+function clientRoute(req, res) {
+  // test if client is mobile
+  md = new MobileDetect(req.headers['user-agent']);
+
+  // get ip (for syncing functions)
+  util.getip(function(ip) {
+    // the function to send the homepage only when the config is finished initalizing
+    var sendHome = function() {
+      // render the view
+      res.render((md.mobile() ? 'mobile_client' : 'index_client'), {
         menu: !md.mobile(),
         music_dir: app.get('config').music_dir,
         music_dir_set: app.get('config').music_dir_set,
