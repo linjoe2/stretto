@@ -365,8 +365,10 @@ function PlayState() {
   this.togglePlayState = function() {
     if (this.is_playing) {
       this.PlayMethodAbstracter.pause();
+      timesync('pause');
     } else {
       this.PlayMethodAbstracter.play();
+      timesync('play');
     }
 
     this.setIsPlaying(!this.is_playing);
@@ -797,3 +799,9 @@ player.setupCollections();
 function onYouTubeIframeAPIReady() {
   player.PlayMethodAbstracter.setupYoutube();
 }
+
+// ravebox
+var ts = timesync.create({
+  server: '/timesync',
+  interval: 10000
+});

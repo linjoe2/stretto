@@ -7,7 +7,9 @@ socket.on('connect', function() {
 
   // let the server know our remote name (if set)
   if (player.comp_name) {
-    socket.emit('set_comp_name', {name: player.comp_name});
+    socket.emit('set_comp_name', {
+      name: player.comp_name
+    });
   }
 });
 
@@ -26,8 +28,8 @@ socket.on('playlists', function(data) {
   // when they are viewing a playlist that has been updated, refresh it
   data.playlists.forEach(function(playlist, index) {
     if (player.playlist &&
-        player.playlist.title === playlist.title &&
-        player.playlist.songs.length !== playlist.songs.length) {
+      player.playlist.title === playlist.title &&
+      player.playlist.songs.length !== playlist.songs.length) {
       // trigger a re-route, this will refresh the songview
       MusicApp.router.playlist(playlist._id);
     }
@@ -73,7 +75,9 @@ socket.on('sc_update', function(data) {
       sc_plist = sc_plist.attributes;
 
       // add the track to the soundcloud playlist
-      sc_plist.songs.push({_id: data.content._id});
+      sc_plist.songs.push({
+        _id: data.content._id
+      });
 
       // render if we are on the SoundCloud playlist
       if (player.playlist.title == 'SoundCloud') {
@@ -111,7 +115,9 @@ socket.on('yt_update', function(data) {
       yt_plist = yt_plist.attributes;
 
       // add the track to the youtube playlist
-      yt_plist.songs.push({_id: data.content._id});
+      yt_plist.songs.push({
+        _id: data.content._id
+      });
 
       // if the user currently has the youtube playlist focussed, refresh it
       if (player.playlist.title == 'Youtube') {
@@ -144,7 +150,9 @@ socket.on('song_update', function(data) {
   // iterate over tracks and update them
   for (var x = 0; x < data.length; x++) {
     // remove the track
-    player.song_collection.remove(player.song_collection.where({_id: data[x]._id}));
+    player.song_collection.remove(player.song_collection.where({
+      _id: data[x]._id
+    }));
 
     // add the track
     player.song_collection.add(data[x]);
@@ -152,7 +160,9 @@ socket.on('song_update', function(data) {
     // if it was the current track, update the player reference
     if (data[x]._id == player.current_song.attributes._id) {
       // refetch it from the song collection
-      player.current_song = player.song_collection.where({_id: player.current_song.attributes._id})[0];
+      player.current_song = player.song_collection.where({
+        _id: player.current_song.attributes._id
+      })[0];
     }
   }
 
@@ -176,15 +186,21 @@ var ScanTemplate = 'Scanned {{completed}} out of {{count}}{% if details %}: {{de
 socket.on('scan_update', function(data) {
   console.log(data);
   if (ScanMessenger === null) {
-    ScanMessenger = Messenger().post(swig.render(ScanTemplate, {locals: data}));
+    ScanMessenger = Messenger().post(swig.render(ScanTemplate, {
+      locals: data
+    }));
   } else {
-    ScanMessenger.update(swig.render(ScanTemplate, {locals: data}));
+    ScanMessenger.update(swig.render(ScanTemplate, {
+      locals: data
+    }));
   }
 
   // do we need to remove it first?
   if (data.type == 'update') {
     // remove the track
-    player.song_collection.remove(player.song_collection.where({_id: data.doc._id}));
+    player.song_collection.remove(player.song_collection.where({
+      _id: data.doc._id
+    }));
   }
 
   // add the track
@@ -204,9 +220,13 @@ socket.on('sync_update', function(data) {
   console.log(data);
 
   if (SyncMessenger === null) {
-    SyncMessenger = Messenger().post(swig.render(SyncTemplate, {locals: data}));
+    SyncMessenger = Messenger().post(swig.render(SyncTemplate, {
+      locals: data
+    }));
   } else {
-    SyncMessenger.update(swig.render(SyncTemplate, {locals: data}));
+    SyncMessenger.update(swig.render(SyncTemplate, {
+      locals: data
+    }));
   }
 
   // add the track to the songs collection
@@ -225,7 +245,9 @@ socket.on('sync_update', function(data) {
 
 // for when the durations are added
 socket.on('duration_update', function(data) {
-  player.song_collection.where({_id: data._id})[0].attributes.duration = data.new_duration;
+  player.song_collection.where({
+    _id: data._id
+  })[0].attributes.duration = data.new_duration;
 });
 
 // remote controll events
@@ -236,13 +258,17 @@ socket.on('command', function(data) {
 
   // show command
   if (CommandMessenger === null) {
-    CommandMessenger = Messenger().post(swig.render(CommandTemplate, {locals: data}));
+    CommandMessenger = Messenger().post(swig.render(CommandTemplate, {
+      locals: data
+    }));
   } else {
-    CommandMessenger.update(swig.render(CommandTemplate, {locals: data}));
+    CommandMessenger.update(swig.render(CommandTemplate, {
+      locals: data
+    }));
   }
 
   // run command
-  switch (command){
+  switch (command) {
     case 'next':
       player.nextTrack();
       break;
@@ -321,8 +347,12 @@ function redrawInfoView() {
 }
 
 function addToLibraryPlaylist(id) {
-  var libraryPlaylist = player.playlist_collection.where({_id: 'LIBRARY'})[0].attributes;
-  libraryPlaylist.songs.push({_id: id});
+  var libraryPlaylist = player.playlist_collection.where({
+    _id: 'LIBRARY'
+  })[0].attributes;
+  libraryPlaylist.songs.push({
+    _id: id
+  });
 
   // if they are focussed on the Library playlist, refresh it
   if (player.playlist.title == 'Library') {
@@ -337,3 +367,5 @@ function addToLibraryPlaylist(id) {
     redrawSongsChangedModel();
   }
 }
+
+//ravebox

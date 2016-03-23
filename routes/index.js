@@ -5,23 +5,29 @@ var AdmZip = require('adm-zip');
 var os = require('os');
 var opener = require('opener');
 var md5 = require('md5');
-var request = require('request').defaults({ encoding: null });
+var request = require('request').defaults({
+  encoding: null
+});
 var fs = require('fs');
 var path = require('path');
 var MobileDetect = require('mobile-detect');
 var similarSongs = require('similar-songs');
-
+var timesyncServer = require('timesync/server');
 /*
  * GET home page.
  */
 
 app = null;
 
+
 exports.createRoutes = function(app_ref) {
   app = app_ref;
 
   // pass the app onto the library_functions module
   lib_func.setApp(app);
+
+  // handle timesync requests 
+  app.use('/timesync', timesyncServer.requestHandler);
 
   app.get('/', musicRoute);
   app.get('/remote/:name', musicRoute);
@@ -31,19 +37,30 @@ exports.createRoutes = function(app_ref) {
 
   // remote control commands
   app.get('/command/:name/:command', remoteCommand);
-  app.io.route('player_page_connected', function(req) { req.socket.join('players'); });
+  app.io.route('player_page_connected', function(req) {
+    req.socket.join('players');
+    console.log('player connected')
+  });
 
   // remote functions
   app.io.route('set_comp_name', setCompName);
 
   // scanning signals
-  app.io.route('scan_page_connected', function(req) { req.socket.join('scanners'); });
+  app.io.route('scan_page_connected', function(req) {
+    req.socket.join('scanners');
+  });
 
-  app.io.route('start_scan', function(req) { lib_func.scanLibrary(false); });
+  app.io.route('start_scan', function(req) {
+    lib_func.scanLibrary(false);
+  });
 
-  app.io.route('start_scan_hard', function(req) { lib_func.scanLibrary(true); });
+  app.io.route('start_scan_hard', function(req) {
+    lib_func.scanLibrary(true);
+  });
 
-  app.io.route('stop_scan', function(req) { lib_func.stopScan(); });
+  app.io.route('stop_scan', function(req) {
+    lib_func.stopScan();
+  });
 
   app.io.route('hard_rescan', rescanItem);
 
@@ -66,7 +83,9 @@ exports.createRoutes = function(app_ref) {
   app.io.route('get_receivers', getReceiversMinusThis);
 
   // open file manager to location
-  app.io.route('open_dir', function(req) { opener(req.data.substring(0, req.data.lastIndexOf(path.sep))); });
+  app.io.route('open_dir', function(req) {
+    opener(req.data.substring(0, req.data.lastIndexOf(path.sep)));
+  });
 
   // update the info of a song
   app.io.route('update_song_info', updateSongInfo);
@@ -93,7 +112,13 @@ exports.createRoutes = function(app_ref) {
 
   // get similar songs
   app.io.route('similar_songs', getSimilarSongs);
+
+  // ravebox functionality
+  app.io.route('Timing', syncTiming);
+  // app.io.route('timing', function(req) { req.socket.join('players'); console.log('player connected')});
 };
+
+
 
 function musicRoute(req, res) {
   // test if client is mobile
@@ -125,7 +150,9 @@ function musicRoute(req, res) {
 }
 
 function sendSong(req, res) {
-  app.db.songs.findOne({_id: req.params.id}, function(err, song) {
+  app.db.songs.findOne({
+    _id: req.params.id
+  }, function(err, song) {
     if (err || !song) {
       res.status(404).send();
     } else {
@@ -144,14 +171,18 @@ function sendCover(req, res) {
 }
 
 function downloadPlaylist(req, res) {
-  app.db.playlists.findOne({_id: req.params.id}, function(err, playlist) {
+  app.db.playlists.findOne({
+    _id: req.params.id
+  }, function(err, playlist) {
     if (err) throw err;
 
     // create zip
     var filename = os.tmpdir() + '/download.zip';
     var zip = new AdmZip();
     async.forEach(playlist.songs, function(item, callback) {
-      app.db.songs.findOne({_id: item._id}, function(err, song) {
+      app.db.songs.findOne({
+        _id: item._id
+      }, function(err, song) {
         if (err) throw err;
         var zip_location;
         if (song.location.lastIndexOf(path.sep) > 0) {
@@ -176,7 +207,9 @@ function downloadPlaylist(req, res) {
 
 function returnSongs(req) {
   get_songs(function(songs) {
-    req.socket.emit('songs', {songs: songs});
+    req.socket.emit('songs', {
+      songs: songs
+    });
   });
 }
 
@@ -193,12 +226,16 @@ function get_songs(callback) {
 function returnPlaylists(req) {
   // send the playlists back to the user
   get_playlists(function(playlists) {
-    req.socket.emit('playlists', {playlists: playlists});
+    req.socket.emit('playlists', {
+      playlists: playlists
+    });
   });
 }
 
 function get_playlists(callback) {
-  app.db.playlists.find({}).sort({ title: 1 }).exec(function(err, docs) {
+  app.db.playlists.find({}).sort({
+    title: 1
+  }).exec(function(err, docs) {
     playlists = docs;
 
     // create a new playlist for the library
@@ -227,9 +264,13 @@ function get_playlists(callback) {
 
 // get the _id's of every song in the library
 function getLibraryIds(callback) {
-  app.db.songs.find({}).sort({ title: 1 }).exec(function(err, docs) {
+  app.db.songs.find({}).sort({
+    title: 1
+  }).exec(function(err, docs) {
     for (var i = 0; i < docs.length; i++) {
-      docs[i] = {_id: docs[i]._id};
+      docs[i] = {
+        _id: docs[i]._id
+      };
     }
 
     callback(docs);
@@ -250,14 +291,22 @@ function createPlaylist(req) {
 function renamePlaylist(req) {
   var id = req.data.id;
   var title = req.data.title;
-  app.db.playlists.update({_id: id}, { $set: {title: title} }, function() {
+  app.db.playlists.update({
+    _id: id
+  }, {
+    $set: {
+      title: title
+    }
+  }, function() {
     req.io.route('fetch_playlists');
   });
 }
 
 function deletePlaylist(req) {
   del = req.data.del;
-  app.db.playlists.remove({_id: del}, {}, function(err, numRemoved) {
+  app.db.playlists.remove({
+    _id: del
+  }, {}, function(err, numRemoved) {
     req.io.route('fetch_playlists');
   });
 }
@@ -267,7 +316,9 @@ function addToPlaylist(req) {
   to = req.data.playlist;
 
   // pull the playlists database
-  app.db.playlists.findOne({ _id: to}, function(err, doc) {
+  app.db.playlists.findOne({
+    _id: to
+  }, function(err, doc) {
     // used as a counter to count how many still need to be added
     waitingOn = 0;
 
@@ -290,7 +341,15 @@ function addToPlaylist(req) {
 
       if (!found) {
         waitingOn++;
-        app.db.playlists.update({_id: to}, { $push:{songs: {_id: addItems[i]}}}, checkFinish);
+        app.db.playlists.update({
+          _id: to
+        }, {
+          $push: {
+            songs: {
+              _id: addItems[i]
+            }
+          }
+        }, checkFinish);
       }
     }
   });
@@ -299,7 +358,9 @@ function addToPlaylist(req) {
 function removeFromPlaylist(req) {
   removeItems = req.data.remove;
   to = req.data.playlist;
-  app.db.playlists.findOne({ _id: to}, function(err, doc) {
+  app.db.playlists.findOne({
+    _id: to
+  }, function(err, doc) {
     var tmpSongs = [];
     for (var i = 0; i < doc.songs.length; i++) {
       if (removeItems.indexOf(doc.songs[i]._id) == -1) {
@@ -307,7 +368,13 @@ function removeFromPlaylist(req) {
       }
     }
 
-    app.db.playlists.update({_id: to}, { $set:{songs: tmpSongs}}, function() {
+    app.db.playlists.update({
+      _id: to
+    }, {
+      $set: {
+        songs: tmpSongs
+      }
+    }, function() {
       req.io.route('fetch_playlists');
     });
   });
@@ -317,7 +384,9 @@ function songMovedInPlaylist(req) {
   var playlist_id = req.data.playlist_id;
   var oldIndex = req.data.oldIndex;
   var newIndex = req.data.newIndex;
-  app.db.playlists.findOne({ _id: playlist_id}, function(err, playlist) {
+  app.db.playlists.findOne({
+    _id: playlist_id
+  }, function(err, playlist) {
     // remove the item from it's old place
     var item = playlist.songs.splice(oldIndex, 1)[0];
 
@@ -325,7 +394,13 @@ function songMovedInPlaylist(req) {
     playlist.songs.splice(newIndex, 0, item);
 
     // update the playlist with the new order
-    app.db.playlists.update({_id: playlist_id}, { $set:{songs: playlist.songs}});
+    app.db.playlists.update({
+      _id: playlist_id
+    }, {
+      $set: {
+        songs: playlist.songs
+      }
+    });
   });
 }
 
@@ -335,20 +410,30 @@ function updatePlayCount(req) {
   var plays = req.data.plays;
 
   // apply the new play_count to the database
-  app.db.songs.update({_id: _id}, { $set: { play_count: plays } });
+  app.db.songs.update({
+    _id: _id
+  }, {
+    $set: {
+      play_count: plays
+    }
+  });
 }
 
 // force rescan of a set of items
 function rescanItem(req) {
   var items = req.data.items;
   var songLocArr = [];
-  app.db.songs.find({ _id: { $in: items }}, function(err, songs) {
+  app.db.songs.find({
+    _id: {
+      $in: items
+    }
+  }, function(err, songs) {
     if (!err && songs)
 
-        // add the location to the list of songs to scan
+    // add the location to the list of songs to scan
       for (var i = 0; i < songs.length; i++) {
-        songLocArr.push(songs[i].location);
-      }
+      songLocArr.push(songs[i].location);
+    }
 
     lib_func.scanItems(songLocArr);
   });
@@ -357,7 +442,9 @@ function rescanItem(req) {
 // update the details for a song
 function updateSongInfo(req) {
   // update the details about the song in the database (minus the cover)
-  app.db.songs.update({_id: req.data._id}, {
+  app.db.songs.update({
+    _id: req.data._id
+  }, {
     $set: {
       title: req.data.title,
       display_artist: req.data.artist,
@@ -387,12 +474,20 @@ function updateSongInfo(req) {
         }
 
         // update the songs cover even if the image already exists
-        app.db.songs.update({display_artist: req.data.artist, album: req.data.album}, {
+        app.db.songs.update({
+          display_artist: req.data.artist,
+          album: req.data.album
+        }, {
           $set: {
             cover_location: cover_filename,
           },
-        }, { multi: true }, function(err, numReplaced) {
-          app.db.songs.find({display_artist: req.data.artist, album: req.data.album}, function(err, tracks) {
+        }, {
+          multi: true
+        }, function(err, numReplaced) {
+          app.db.songs.find({
+            display_artist: req.data.artist,
+            album: req.data.album
+          }, function(err, tracks) {
             app.io.sockets.emit('song_update', tracks);
           });
         });
@@ -419,7 +514,11 @@ function updateSongInfo(req) {
 // write the tags (metadata) from the database to the files for the given items
 function rewriteTags(req) {
   var items = req.data.items;
-  app.db.songs.find({ _id: { $in: items }}, function(err, songs) {
+  app.db.songs.find({
+    _id: {
+      $in: items
+    }
+  }, function(err, songs) {
     if (!err && songs) {
       // write the tags for all the given files
       for (var i in songs) {
@@ -446,7 +545,9 @@ function remoteCommand(req, res) {
     if (client.name &&
       client.name.length > 0 &&
       client.name == name) {
-      client.emit('command', {command: command});
+      client.emit('command', {
+        command: command
+      });
 
       // mark it as sent
       command_sent = true;
@@ -491,7 +592,9 @@ function getReceiversMinusThis(req) {
     }
   }
 
-  req.socket.emit('recievers', {recievers: validReceivers});
+  req.socket.emit('recievers', {
+    recievers: validReceivers
+  });
 }
 
 // sync routes
@@ -500,7 +603,10 @@ function syncPageConnected(req) {
   get_playlists(function(playlists) {
     // get the songs data
     get_songs(function(songs) {
-      req.socket.emit('alldata', {playlists: playlists, songs: songs});
+      req.socket.emit('alldata', {
+        playlists: playlists,
+        songs: songs
+      });
     });
   });
 }
@@ -522,7 +628,11 @@ function syncPlaylists(req) {
   for (var list_cnt = 0; list_cnt < lists.length; list_cnt++) {
     // attempt to replace the playlist if it is editable
     if (lists[list_cnt].editable) {
-      app.db.playlists.update({_id: lists[list_cnt]._id}, lists[list_cnt], {upsert: true}, playlistResult);
+      app.db.playlists.update({
+        _id: lists[list_cnt]._id
+      }, lists[list_cnt], {
+        upsert: true
+      }, playlistResult);
     }
   }
 
@@ -538,7 +648,9 @@ function soundcloudDownload(req) {
 
 // download the youtube song
 function youtubeDownload(req) {
-  lib_func.ytDownload({url: req.data.url});
+  lib_func.ytDownload({
+    url: req.data.url
+  });
 }
 
 function youtubeImport(req) {
@@ -555,14 +667,23 @@ function youtubeImport(req) {
 // update the app settings
 function updateSettings(req) {
   // emit the settings updated message to the client
-  req.socket.emit('message', {message: 'Settings Updated'});
+  req.socket.emit('message', {
+    message: 'Settings Updated'
+  });
 
   // update the settings
   if (req.data.music_dir) {
     // first remove all music_dir settings
-    app.db.settings.remove({key: 'music_dir'}, {multi: true}, function() {
+    app.db.settings.remove({
+      key: 'music_dir'
+    }, {
+      multi: true
+    }, function() {
       // add a new one in
-      app.db.settings.insert({key: 'music_dir', value: req.data.music_dir}, function() {
+      app.db.settings.insert({
+        key: 'music_dir',
+        value: req.data.music_dir
+      }, function() {
         // update config
         app.get('config').music_dir = req.data.music_dir;
         app.get('config').music_dir_set = true;
@@ -572,9 +693,16 @@ function updateSettings(req) {
 
   if (req.data.country_code) {
     // first remove all country_code settings
-    app.db.settings.remove({key: 'country_code'}, {multi: true}, function() {
+    app.db.settings.remove({
+      key: 'country_code'
+    }, {
+      multi: true
+    }, function() {
       // add a new one in
-      app.db.settings.insert({key: 'country_code', value: req.data.country_code}, function() {
+      app.db.settings.insert({
+        key: 'country_code',
+        value: req.data.country_code
+      }, function() {
         // update config
         app.get('config').country_code = req.data.country_code;
       });
@@ -605,6 +733,18 @@ function getSimilarSongs(req) {
       }
     }
 
-    req.socket.emit('similar_songs', {error: err, songs: songs, reqData: req.data});
+    req.socket.emit('similar_songs', {
+      error: err,
+      songs: songs,
+      reqData: req.data
+    });
   });
 }
+  // ravebox functionality
+function syncTiming(req, res) {
+  console.log(req)
+    // req.socket.on('connection', function(socket) {
+      // ntp.sync(socket);
+      // console.log('ntp sync')
+    // });
+  }
