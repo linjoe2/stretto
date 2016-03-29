@@ -740,11 +740,14 @@ function getSimilarSongs(req) {
     });
   });
 }
-  // ravebox functionality
-function syncTiming(req, res) {
-  console.log(req)
-    // req.socket.on('connection', function(socket) {
-      // ntp.sync(socket);
-      // console.log('ntp sync')
-    // });
-  }
+// ravebox functionality
+function syncTiming(req) {
+  var started = req.data.started
+  var state = req.data.state
+  var currSong = req.data.song
+  console.log('started at: ' + started);
+  console.log('state: ' + state)
+  console.log('songid: ' + currSong)
+  app.io.emit('Timestamp', {state, started, currSong});
+};
+

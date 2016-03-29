@@ -364,14 +364,14 @@ function PlayState() {
 
   this.togglePlayState = function() {
     if (this.is_playing) {
-      this.PlayMethodAbstracter.pause();
+      // this.PlayMethodAbstracter.pause();
       timesync('pause');
     } else {
-      this.PlayMethodAbstracter.play();
+      // this.PlayMethodAbstracter.play();
       timesync('play');
     }
 
-    this.setIsPlaying(!this.is_playing);
+//    this.setIsPlaying(!this.is_playing);
   };
 
   this.toggleShuffle = function() {

@@ -19,13 +19,31 @@ ts.on('change', function(offset) {
 // }, 5000);
 
 timesync = function(state) {
-  console.log(state); 
-  if (state = 'play') {
+  if (state == 'play') {
     var now = new Date(ts.now());
     var currenttime = player.PlayMethodAbstracter.getCurrentTime() * 1000;
     var startedAt = Number(now.valueOf()) - Number(currenttime);
-    return console.log('started at: ' + startedAt);
-  }else {
-    return console.log('music paused');
+    var currentSong = player.playing_id
+    console.log('started at: ' + startedAt);
+    var time = {'started':startedAt, 'state':state, 'song':currentSong};
+     socket.emit('Timing', time);
+  } else {
+    console.log('music paused');
+    var time = {'started':startedAt, 'state':'--',  'song':'--'};
+     socket.emit('Timing', time);
   }
 }
+
+
+socket.on('Timestamp', function(req) {
+  var currTime = req.started - Number(now.valueOf())
+  console.log('state: ' + req.state + ' started: ' + req.started + 'song: ' + req.currSong)
+  if(req.state == 'play'){
+    player.playSong(req.currSong)
+    player.PlayMethodAbstracter.play();
+    } else {
+    player.PlayMethodAbstracter.pause();
+  }
+    player.setIsPlaying(!player.is_playing);
+    console.log(player.playing_id)
+  })
